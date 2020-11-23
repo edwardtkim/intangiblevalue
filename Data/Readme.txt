@@ -27,3 +27,4 @@ Date: calendar year-month
 hml_int_t100: HML^INT t100 monthly returns (percent)
 hml_int-t30: HML^INT t30 monthly returns (percent)
 omk: OMK portfolio (percent)
+ 
