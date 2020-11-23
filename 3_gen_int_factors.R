@@ -104,7 +104,7 @@ ok_prep_final <- int_prep_final %>%
     mutate(omk = ok5 - ok1) %>%
     select(Date, omk)
    
-   
+    
 ###############################################################
 ## Compile all factors  
   

@@ -2,7 +2,7 @@
 # Intangible Value 
 # by Andrea L. Eisfeldt, Edward Kim, and Dimitris Papanikolaou
 #
-# 2_gen_int.R
+# 2_gen_int.R 
 #
 # Generate intangible capital data using perpetual inventory method (Eisfeldt and Papanikolaou, 2013)
 #

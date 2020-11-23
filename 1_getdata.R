@@ -134,13 +134,13 @@ crsp_msedelist <- data_crsp_msedelist %>%
 
 ## CRSP prep 1
 # merge raw tables
-crsp_m_prep <- crsp_msf %>% 
+crsp_prep <- crsp_msf %>% 
   merge(crsp_mse, by=c("Date", "permno"), all.x=TRUE, allow.cartesian=TRUE) %>%
   merge(crsp_msedelist, by=c("Date", "permno"), all.x=TRUE, allow.cartesian=TRUE) %>%
   mutate(Date = as.Date(Date))
 
 # identify and drop duplicate observations
-crsp_dup <- crsp_m_prep %>%
+crsp_dup <- crsp_prep %>%
   arrange(Date, permno) %>%
   group_by(Date, permno) %>%
   filter(n() > 1) %>%
@@ -149,12 +149,12 @@ crsp_dup <- crsp_m_prep %>%
   filter(n() > 1) %>%
   filter(row_number() == n()) #prioritize last observation
 
-crsp_nodup <- crsp_m_prep %>%
+crsp_nodup <- crsp_prep %>%
   arrange(Date, permno) %>%
   group_by(Date, permno) %>%
   filter(n() == 1)
 
-crsp_prep_final <- bind_rows(crsp_nodup,crsp_dup) %>% arrange(Date, permno) 
+crsp_prep_final <- bind_rows(crsp_nodup, crsp_dup) %>% arrange(Date, permno) 
 
 # clean and prep
 crsp_m <- lazy_dt(as.data.table(crsp_prep_final), immutable=FALSE) %>% 
@@ -209,7 +209,7 @@ crsp_clean <- lazy_dt(as.data.table(crsp_m1), immutable=FALSE) %>%
   as.data.frame()
 
 # output standalone permno-sic code mapping for perpetual inventory method
-crsp_sic <- crsp_clean %>% select(Date,permno,hsiccd)
+crsp_sic <- crsp_clean %>% select(Date, permno, hsiccd)
 
 #save(crsp_clean, file = "crsp_clean.RData")
 #save(crsp_sic, file = "crsp_sic.RData")
@@ -293,7 +293,7 @@ crsp_comp <- comp_clean  %>%
   merge(data_hist_be, by=c("Date", "permno"), all.x=TRUE, allow.caresian=TRUE) %>%
   arrange(permno, Date, desc(datadate)) %>%
   distinct(permno, Date, .keep_all = TRUE) %>% # drop duplicates based on datadate 
-   #fill in gaps with most recent available, up to 11 months
+  #fill in gaps with most recent available, up to 11 months
   group_by(permno) %>%
   mutate_at(vars(datadate:hist_be), list(~na_locf_until(., 11))) %>% # fill(datadate:hist_be) %>% #alternative method to fill without limit
   ungroup %>%
