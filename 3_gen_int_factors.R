@@ -103,7 +103,7 @@ ok_prep_final <- int_prep_final %>%
     spread(ok_pf, ret_pf) %>% 
     mutate(omk = ok5 - ok1) %>%
     select(Date, omk)
-   
+     
     
 ###############################################################
 ## Compile all factors  

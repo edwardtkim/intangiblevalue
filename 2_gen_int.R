@@ -71,7 +71,7 @@ ppint2 <- ppint1[FALSE,]
 u <- unique(cc5$permno)
 for (j in 1:length(u)) {
   cc6 <- cc5 %>% filter(permno==u[j])
-  
+   
   
 n <- max(cc6$n)-1
 for(i in 1:n)
@@ -88,4 +88,4 @@ ppint2 <- rbind(ppint2, cc7)
 
 ## Output
 rm(cc1, cc2, cc3, cc4, cc5, cc6, cc7)
-save(ppint2, file="ppint2.RData")
+save(ppint2, file="ppint2.RData") 

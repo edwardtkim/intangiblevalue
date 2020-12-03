@@ -360,14 +360,14 @@ int_prep_final$ind12 <- ifelse(!is.na(int_prep_final$ind12),int_prep_final$ind12
 int_prep_final$ind17 <- ifelse(!is.na(int_prep_final$ind17),int_prep_final$ind17,17) #17 is "Other'
 
 #save(int_prep_final, file = "int_prep_final.RData")
-
+ 
 
 ###########################################
 ## Output final dataset, cleaned
 ###########################################
 
 int_xsec <- int_prep_final %>% 
-  select(datadate, permno, gvkey, be, be_int_t100, be_int_t30, bm, bm_int_t100, bm_int_t30, ok) %>% 
+  select(datadate, permno, gvkey, k_int_t100, k_int_t30, be, be_int_t100, be_int_t30, bm, bm_int_t100, bm_int_t30, ok) %>% 
   filter(year(datadate)>=1975) %>%
   mutate_if(is.numeric, ~replace_na(., 0)) %>%
   distinct(datadate, permno, gvkey, .keep_all=TRUE ) %>%
