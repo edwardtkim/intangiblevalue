@@ -1,13 +1,13 @@
 ###############################################################################################
 # Intangible Value  
-# by Andrea L. Eisfeldt, Edward Kim, and Dimitris Papanikolaou
+# by Andrea L. Eisfeldt, Edward T. Kim, and Dimitris Papanikolaou
 #
 # 1_getdata.R
 #
 # Compile CRSP and Compustat data, run perpetual inventory method, compute be_int
 # Export intermediate panel dataset
 #
-# Last updated: Nov 2020
+# Last updated: May 2021
 #
 # References: Fama and French (1992, 1993)
 #             http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_factors.html
@@ -17,7 +17,7 @@
 
 
 ###############################################################################################
-## Initialization
+# Initialization
 
 rm(list=ls())
 
@@ -42,7 +42,7 @@ library(Hmisc)
 wrds <- dbConnect(Postgres(),
                   host='wrds-pgdata.wharton.upenn.edu',
                   port=9737,
-                  user='', #change user ID as necessary
+                  user='', #input user ID 
                   password=getPass(),
                   dbname='wrds',
                   sslmode='require')
@@ -55,58 +55,58 @@ na_locf_until = function(x, n) {
   c(NA, x[! is.na(x)])[replace(l, ave(l, l, FUN=seq_along) > (n+1), 0) + 1]
 }
 
-## Output directory
-setwd("") #set directory
 
+## Output directory
+setwd("") #set directory 
 
 ###############################################################################################
 ### 1. Download raw data files
 ###############################################################################################
 
 ## Compustat data (fundamentals, annual)
-temp <- dbSendQuery(wrds, "select gvkey, cusip, datadate, fyr, fyear, sich, naicsh,
+res <- dbSendQuery(wrds, "select gvkey, cusip, datadate, fyr, fyear, sich, naicsh,
                         at, lt, txditc, txdb, itcb, seq, ceq, pstkrv, pstk, pstkl, gdwl,
                         xrd, xsga, xad, xlr, xint, intan, rdip, cogs, ib, indfmt, datafmt, popsrc, consol
                    from comp.funda
                    where indfmt='INDL' and datafmt='STD' and consol='C' and popsrc='D'")
-data_comp_raw <- dbFetch(temp, n=-1)
-dbClearResult(temp)
+data_comp_raw <- dbFetch(res, n=-1)
+dbClearResult(res)
 
 ## CPI data for perpetual inventory method
-temp <- dbSendQuery(wrds, "select *
+res <- dbSendQuery(wrds, "select *
                     from crsp.tfz_mth_cpi")
-data_cpi_prep <- dbFetch(temp, n=-1) 
-dbClearResult(temp)
+data_cpi_prep <- dbFetch(res, n=-1) 
+dbClearResult(res)
 
-data_cpi <- data_cpi_prep %>% 
-  mutate(datadate = ceiling_date(as.Date(mcaldt,format = "%m/%d/%y"), "month") - days(1)) %>% 
-  select(datadate,tmcpiref)
+data_cpi <- data_cpi_prep %>% mutate(datadate = ceiling_date(as.Date(mcaldt,format = "%m/%d/%y"), "month") - days(1)) %>% select(datadate,tmcpiref)
   
 
 ## Compustat-CRSP link table 
-temp <- dbSendQuery(wrds, "select gvkey, lpermno, linkdt, linkenddt, linktype, linkprim
+res <- dbSendQuery(wrds, "select gvkey, lpermno, linkdt, linkenddt, linktype, linkprim
                     from crsp.ccmxpf_lnkhist")
-data_link <- dbFetch(temp, n=-1) 
-dbClearResult(temp)
+data_ccmlink <- dbFetch(res, n=-1) 
+dbClearResult(res)
 
 
 ## CRSP raw tables
-temp <- dbSendQuery(wrds, "select date, permno, permco, shrout, prc, hsiccd, 
+res <- dbSendQuery(wrds, "select date, permno, permco, shrout, prc, hsiccd, 
                           ret, retx, vol
                    from crsp.msf")
-data_crsp_msf <- dbFetch(temp, n=-1) 
-dbClearResult(temp)
+data_crsp_msf <- dbFetch(res, n=-1) 
+dbClearResult(res)
 
-temp <- dbSendQuery(wrds, "select date, permno, comnam, shrcd, exchcd
+res <- dbSendQuery(wrds, "select date, permno, comnam, shrcd, exchcd
                    from crsp.mse")
-data_crsp_mse <- dbFetch(temp, n=-1)
-dbClearResult(temp)
+data_crsp_mse <- dbFetch(res, n=-1)
+dbClearResult(res)
 
-temp <- dbSendQuery(wrds, "select dlstdt, permno, dlret
+res <- dbSendQuery(wrds, "select dlstdt, permno, dlret
                    from crspq.msedelist")
-data_crsp_msedelist <- dbFetch(temp, n = -1)
-dbClearResult(temp)
+data_crsp_msedelist <- dbFetch(res, n = -1)
+dbClearResult(res)
 
+#xxxx remove later: merge 2021 monthly stock prices by permno (for most recent data)
+#crsp_price_2021 <- read.csv("crsp_price_2021.csv")
 
 ###############################################################################################
 ### 2. Clean CRSP and COMPUSTAT data
@@ -133,30 +133,29 @@ crsp_msedelist <- data_crsp_msedelist %>%
   select(-dlstdt)
 
 ## CRSP prep 1
-# merge raw tables
-crsp_prep <- crsp_msf %>% 
+#merge raw tables
+crsp_m_prep <- crsp_msf %>% 
   merge(crsp_mse, by=c("Date", "permno"), all.x=TRUE, allow.cartesian=TRUE) %>%
   merge(crsp_msedelist, by=c("Date", "permno"), all.x=TRUE, allow.cartesian=TRUE) %>%
   mutate(Date = as.Date(Date))
 
-# identify and drop duplicate observations
-crsp_dup <- crsp_prep %>%
+#identify and drop duplicate observations
+crsp_dup <- crsp_m_prep %>%
   arrange(Date, permno) %>%
   group_by(Date, permno) %>%
   filter(n() > 1) %>%
   filter(exchcd < 4 & exchcd > 0) %>% #prioritize exchcd between 1 and 3
   group_by(Date, permno) %>%
   filter(n() > 1) %>%
-  filter(row_number() == n()) #prioritize last observation
+  filter(row_number()==n()) #prioritize last observation
 
-crsp_nodup <- crsp_prep %>%
+crsp_nodup <- crsp_m_prep %>%
   arrange(Date, permno) %>%
   group_by(Date, permno) %>%
-  filter(n() == 1)
+  filter(n() ==1)
 
-crsp_prep_final <- bind_rows(crsp_nodup, crsp_dup) %>% arrange(Date, permno) 
+crsp_prep_final <- bind_rows(crsp_nodup,crsp_dup) %>% arrange(Date, permno) 
 
-# clean and prep
 crsp_m <- lazy_dt(as.data.table(crsp_prep_final), immutable=FALSE) %>% 
   #convert to factors
   mutate_at(vars(permno, permco, shrcd, exchcd), funs(as.factor)) %>%
@@ -175,19 +174,21 @@ crsp_m <- lazy_dt(as.data.table(crsp_prep_final), immutable=FALSE) %>%
   slice(1) %>% 
   ungroup() %>%
   #keep pre-2019 only
-  filter(year(Date) < 2019) %>%
+  #filter(year(Date)<2019) %>%
   as.data.frame()
 
-# initialize first and last date observation for each permno
+##initialize first and last date observations
 crsp_m_bounds <- lazy_dt(as.data.table(crsp_m), immutable=FALSE) %>%
   group_by(permno) %>%
   summarise(first = first(Date), last = last(Date)) %>% 
   as.data.frame()
 
-# drop firm-date observations outside bounds
+##prep and clean
 crsp_m1 <- crsp_m %>%
   select(Date, permno, comnam, shrcd, exchcd, hsiccd, shrout, prc, vol, retx, retadj, me) %>% 
+  #mutate(Date=as.Date(Date)) %>%
   complete(Date = seq.Date(min(Date), max(Date), by="month"), permno) %>% 
+  #drop firm-date observations outside bounds
   merge(crsp_m_bounds, by="permno") %>%
   filter(Date>=as.Date(first) & Date<=as.Date(last)) %>% 
   mutate(Date=ceiling_date(Date,"month") - days(1)) %>%
@@ -196,11 +197,10 @@ crsp_m1 <- crsp_m %>%
   fill(`comnam`) %>%
   ungroup
 
-# calculate portfolio weights
 crsp_clean <- lazy_dt(as.data.table(crsp_m1), immutable=FALSE) %>%
   mutate(permno = as.factor(permno)) %>% 
   group_by(permno) %>%
-  mutate(
+  mutate(#calculate portfolio weights
     port.weight = as.numeric(ifelse(!is.na(Lag(me,shift=1)), Lag(me,shift=1), me/(1+retx))), 
     port.weight = ifelse(is.na(retadj) & is.na(prc), NA, port.weight)) %>% 
   ungroup %>%  
@@ -208,8 +208,8 @@ crsp_clean <- lazy_dt(as.data.table(crsp_m1), immutable=FALSE) %>%
   select(Date, permno, comnam:port.weight) %>% 
   as.data.frame()
 
-# output standalone permno-sic code mapping for perpetual inventory method
-crsp_sic <- crsp_clean %>% select(Date, permno, hsiccd)
+#output standalone permno-sic code mapping for perpetual inventory method
+crsp_sic <- crsp_clean %>% select(Date,permno,hsiccd)
 
 #save(crsp_clean, file = "crsp_clean.RData")
 #save(crsp_sic, file = "crsp_sic.RData")
@@ -220,7 +220,7 @@ crsp_sic <- crsp_clean %>% select(Date, permno, hsiccd)
 ###########################################
 
 ## Merge Compustat to link table identifier
-data_ccm <-  data_link %>%
+data_ccm <-  data_ccmlink %>%
   filter(linktype %in% c("LU", "LC", "LS")) %>%
   filter(linkprim %in% c("P", "C", "J")) %>%
   merge(data_comp_raw, by="gvkey") %>% 
@@ -261,12 +261,12 @@ source("2_gen_int.R")
 
 ## Create intangible capital variables 
 comp_clean <- comp_prep_final %>%
-  merge(ppint2, by.x=c("permno","datadate"),all.x=TRUE) %>%
+  merge(ppint3, by.x=c("permno","datadate"),all.x=TRUE) %>%
   merge(crsp_sic, by.x=c("datadate","permno"), by.y=c("Date","permno"), all.x=TRUE) %>%
   mutate(sic = coalesce(sich,hsiccd)) %>%
-  mutate(# set Compustat date to most recently available as of year t December, to be merged to t+1 June
+  mutate(#set Compustat date to most recently available as of year t December, to be merged to t+1 June
          Date = ceiling_date(as.Date(as.yearmon(ymd(paste0(fyear+1,"-6-30"))),format = "%m/%d/%y"), "month") - days(1), 
-         # intangible capital
+         #intangible capital variables
          k_int_t100 = coalesce(int_d20_t100,0),
          k_int_t30 = coalesce(gt,0)+coalesce(int_d20_t30,0))
 
@@ -292,10 +292,10 @@ crsp_comp <- comp_clean  %>%
   merge(crsp_clean, ., by=c("Date", "permno"), all.x=TRUE, allow.cartesian=TRUE) %>%  
   merge(data_hist_be, by=c("Date", "permno"), all.x=TRUE, allow.caresian=TRUE) %>%
   arrange(permno, Date, desc(datadate)) %>%
-  distinct(permno, Date, .keep_all = TRUE) %>% # drop duplicates based on datadate 
+  distinct(permno, Date, .keep_all = TRUE) %>% #drop duplicates based on datadates 
   #fill in gaps with most recent available, up to 11 months
   group_by(permno) %>%
-  mutate_at(vars(datadate:hist_be), list(~na_locf_until(., 11))) %>% # fill(datadate:hist_be) %>% #alternative method to fill without limit
+  mutate_at(vars(datadate:hist_be), list(~na_locf_until(., 11))) %>% #fill(datadate:hist_be) %>% #alternative method to fill without limit
   ungroup %>%
   mutate(datadate=as.Date(datadate)) %>%
   arrange(Date, permno)
@@ -313,9 +313,9 @@ int_prep1 <- crsp_comp %>%
   mutate(be = coalesce(be, hist_be), 
          be_int_t100 = coalesce(be,0) + coalesce(k_int_t100,0) - coalesce(gdwl,0),
          be_int_t30 = coalesce(be,0) + coalesce(k_int_t30,0) - coalesce(gdwl,0),
-         tot_k_ep = coalesce(at,0) + coalesce(orgt_d15_t100,0), # replication of EP factor (delta = .15, theta = 1)
+         tot_k_ep = coalesce(at,0) + coalesce(orgt_d15_t100,0), ### replication of EP factor (delta = .15, theta = 1)
          # Market equity (size)
-         me_dec = as.numeric(ifelse(month(Date)==6 & Lag(me,shift=6)>0, Lag(me,shift=6), NA)), 
+         me_dec = as.numeric(ifelse(month(Date)==6 & Lag(me,shift=6)>0, Lag(me,shift=6), NA)), # previous Dec ME 
          me_jun = as.numeric(ifelse(month(Date)==6, me, NA)), 
          # EP (2013) OMK
          ok = as.numeric(ifelse(tot_k_ep>0, orgt_d15_t100/tot_k_ep, NA)), 
@@ -323,12 +323,16 @@ int_prep1 <- crsp_comp %>%
          bm = as.numeric(ifelse(month(Date)==6 & me_dec>0, be/me_dec, NA)), 
          bm_int_t100 = as.numeric(ifelse(month(Date)==6 & me_dec>0, be_int_t100/me_dec, NA)), 
          bm_int_t30 = as.numeric(ifelse(month(Date)==6 & me_dec>0, be_int_t30/me_dec, NA)), 
+         ime_t100 = as.numeric(ifelse(month(Date)==6 & me_dec>0, k_int_t100/me_dec, NA)),
+         ime_t30 = as.numeric(ifelse(month(Date)==6 & me_dec>0, k_int_t30/me_dec, NA)), 
          # Lagged main variables
          lag_me_jun = Lag(me_jun, shift=1), 
          lag_me_dec = Lag(me_dec, shift=1),
          lag_bm = Lag(bm, shift=1),
          lag_bm_int_t100 = Lag(bm_int_t100, shift=1),
          lag_bm_int_t30 = Lag(bm_int_t30, shift=1),
+         lag_ime_t100 = Lag(ime_t100, shift=1),
+         lag_ime_t30 = Lag(ime_t30, shift=1),
          lag_ok = Lag(ok, shift=1))
         
 int_prep2 <- int_prep1 %>%
@@ -337,14 +341,18 @@ int_prep2 <- int_prep1 %>%
          be, fyear:lag_ok) %>% 
   arrange(Date, permno) %>%
   group_by(permno) %>%
-  mutate_at(vars(me_dec:lag_ok), list(~na_locf_until(., 11))) %>% # fill(me_dec:lag_ok) %>%
+  mutate_at(vars(me_dec:lag_ok), list(~na_locf_until(., 11))) %>% #fill(me_dec:lag_ok) %>%
   ungroup %>%
   mutate(port.weight = ifelse(is.na(port.weight), 0, port.weight))
 
+
 ## Assign and merge industry classifications
+
+#17-industry: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_17_ind_port.html
 ff_ind_17 <- read.csv("ff_ind_17.csv")
 names(ff_ind_17) <- c("ind17","ind17_l","ind17_h")
 
+#12-industry: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_12_ind_port.html
 ff_ind_12 <- read.csv("ff_ind_12.csv")
 names(ff_ind_12) <- c("ind12","ind12_l","ind12_h")
 
@@ -358,20 +366,19 @@ int_prep_final = sqldf("select * from int_ind12
 
 int_prep_final$ind12 <- ifelse(!is.na(int_prep_final$ind12),int_prep_final$ind12,12) #12 is "Other"
 int_prep_final$ind17 <- ifelse(!is.na(int_prep_final$ind17),int_prep_final$ind17,17) #17 is "Other'
-
 #save(int_prep_final, file = "int_prep_final.RData")
- 
+
 
 ###########################################
-## Output final dataset, cleaned
+## Output panel dataset, cleaned
 ###########################################
 
 int_xsec <- int_prep_final %>% 
-  select(datadate, permno, gvkey, k_int_t100, k_int_t30, be, be_int_t100, be_int_t30, bm, bm_int_t100, bm_int_t30, ok) %>% 
-  filter(year(datadate)>=1975) %>%
+  select(datadate, permno, gvkey, be, k_int_t100, k_int_t30, bm, bm_int_t100, bm_int_t30, ime_t100, ok) %>% 
+  filter(year(datadate)>=1975 & year(datadate)<=2018) %>%
   mutate_if(is.numeric, ~replace_na(., 0)) %>%
   distinct(datadate, permno, gvkey, .keep_all=TRUE ) %>%
-  mutate_if(is.numeric, round, digits = 3)
+  mutate_if(is.numeric, round, digits = 4)
 
 save(int_xsec, file = "int_xsec.RData")
 write.csv(int_xsec, file = "int_xsec.csv", row.names=FALSE)
