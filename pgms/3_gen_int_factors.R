@@ -6,7 +6,7 @@
 #
 # Create value (HML) factors using intangibles-adjusted book to market equity
 #
-# Last updated: May 2021
+# Last updated: May 2021 
 #
 ###############################################################################################
 
@@ -255,7 +255,7 @@ int_factors <- ret_t100 %>%
     merge(ret_t100_ime, by=c("Date"), all.x=TRUE, allow.cartesian=TRUE) %>%
     merge(ret_t30, by=c("Date"), all.x=TRUE, allow.cartesian=TRUE) %>%
     merge(ret_omk, by=c("Date"), all.x=TRUE, allow.cartesian=TRUE) %>%
-    filter(year(Date)>=1975 & year(Date)<=2018) %>%
+    filter(year(Date)>=1975) %>%
     mutate_if(is.numeric, ~. *100) %>% #convert to percent
     mutate_if(is.numeric, round, digits = 4) 
   
