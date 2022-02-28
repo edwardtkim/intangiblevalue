@@ -2,11 +2,6 @@
 # Intangible Value 
 # by Andrea L. Eisfeldt, Edward T. Kim, and Dimitris Papanikolaou
 #
-# R Programs:
-#    1_getdata.R
-#    2_gen_int.R
-#    3_gen_int_factors.R
-#
 ###############################################################################################
 
 ## Variable descriptions
