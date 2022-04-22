@@ -1,7 +1,6 @@
 ###############################################################################################
 # Intangible Value 
 # by Andrea L. Eisfeldt, Edward T. Kim, and Dimitris Papanikolaou
-#
 ###############################################################################################
 
 ## Variable descriptions
@@ -16,10 +15,11 @@ bm: be/me as defined in Fama and French (1992, 1993)
 bm_int_t100: (be + int_t100 - gdwl)/me
 bm_int_t30: (be + int_t30 - gdwl)/me
 ime_t100: k_int_t100/me
-ok: organization capital to total assets ratio (Eisfeldt and Papanikolaou, 2013)
+ok: organization capital/total assets (Eisfeldt and Papanikolaou, 2013)
 
 # int_factors.csv
 Date: calendar year-month
 hml_int_t100: HML^INT EKP monthly returns (percent)
-hml_int-t30: HML^INT PT monthly returns (percent)
+hml_ime_t100: HML^IME EKP monthly returns (percent)
+hml_int_t30: HML^INT PT monthly returns (percent)
 omk: OMK portfolio returns (percent)
